@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum user_role {
+  admin
+  manager
+  cashier
+}
+
+enum payment_method_enum {
+  cash
+  qris
+  debit
+  credit
+}
+
+enum stock_movement_type {
+  in
+  out
+  adjustment
+}
+
+enum purchase_status {
+  paid
+  unpaid
+  partial
+}
+
+model branches {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String            @db.VarChar(255)
+  address         String?
+  phone           String?           @db.VarChar(50)
+  users           users[]
+  shifts          shifts[]
+  transactions    transactions[]
+  stock_movements stock_movements[]
+  purchases       purchases[]
+}
+
+model users {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id       String            @db.Uuid
+  name            String            @db.VarChar(255)
+  email           String?           @unique @db.VarChar(255)
+  password        String            @db.VarChar(255)
+  role            user_role
+  deleted_at      DateTime?         @db.Timestamp(6)
+  branch          branches          @relation(fields: [branch_id], references: [id])
+  shifts          shifts[]
+  transactions    transactions[]
+  stock_movements stock_movements[]
+}
+
+model categories {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String     @db.VarChar(255)
+  deleted_at DateTime?  @db.Timestamp(6)
+  products   products[]
+}
+
+model products {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id         String                @db.Uuid
+  sku                 String                @unique @db.VarChar(100)
+  name                String                @db.VarChar(255)
+  base_price          Decimal               @default(0.00) @db.Decimal(15, 2)
+  selling_price       Decimal               @default(0.00) @db.Decimal(15, 2)
+  unit                String?               @db.VarChar(50)
+  deleted_at          DateTime?             @db.Timestamp(6)
+  category            categories            @relation(fields: [category_id], references: [id])
+  transaction_details transaction_details[]
+  stock_movements     stock_movements[]
+  purchase_details    purchase_details[]
+  product_variants    product_variants[]
+  product_modifiers   product_modifiers[]
+}
+
+model customers {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String         @db.VarChar(255)
+  phone        String?        @db.VarChar(50)
+  points       Int?           @default(0)
+  transactions transactions[]
+}
+
+model shifts {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id     String         @db.Uuid
+  user_id       String         @db.Uuid
+  opening_time  DateTime       @default(now()) @db.Timestamp(6)
+  closing_time  DateTime?      @db.Timestamp(6)
+  starting_cash Decimal        @default(0.00) @db.Decimal(15, 2)
+  expected_cash Decimal?       @default(0.00) @db.Decimal(15, 2)
+  actual_cash   Decimal?       @default(0.00) @db.Decimal(15, 2)
+  difference    Decimal?       @default(0.00) @db.Decimal(15, 2)
+  branch        branches       @relation(fields: [branch_id], references: [id])
+  user          users          @relation(fields: [user_id], references: [id])
+  transactions  transactions[]
+}
+
+model transactions {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id            String                 @db.Uuid
+  user_id              String                 @db.Uuid
+  customer_id          String?                @db.Uuid
+  shift_id             String                 @db.Uuid
+  invoice_number       String                 @unique @db.VarChar(100)
+  subtotal             Decimal                @default(0.00) @db.Decimal(15, 2)
+  tax_amount           Decimal                @default(0.00) @db.Decimal(15, 2)
+  discount_amount      Decimal                @default(0.00) @db.Decimal(15, 2)
+  grand_total          Decimal                @default(0.00) @db.Decimal(15, 2)
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  branch               branches               @relation(fields: [branch_id], references: [id])
+  user                 users                  @relation(fields: [user_id], references: [id])
+  customer             customers?             @relation(fields: [customer_id], references: [id])
+  shift                shifts                 @relation(fields: [shift_id], references: [id])
+  transaction_details  transaction_details[]
+  transaction_payments transaction_payments[]
+}
+
+model transaction_details {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id String       @db.Uuid
+  product_id     String       @db.Uuid
+  product_sku    String?      @db.VarChar(100)
+  product_name   String?      @db.VarChar(255)
+  purchase_price Decimal      @default(0.00) @db.Decimal(15, 2)
+  selling_price  Decimal      @default(0.00) @db.Decimal(15, 2)
+  quantity       Int          @default(1)
+  subtotal       Decimal      @default(0.00) @db.Decimal(15, 2)
+  transaction    transactions @relation(fields: [transaction_id], references: [id])
+  product        products     @relation(fields: [product_id], references: [id])
+}
+
+model transaction_payments {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id String              @db.Uuid
+  payment_method payment_method_enum
+  amount_paid    Decimal             @default(0.00) @db.Decimal(15, 2)
+  created_at     DateTime            @default(now()) @db.Timestamp(6)
+  transaction    transactions        @relation(fields: [transaction_id], references: [id])
+}
+
+model stock_movements {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id    String              @db.Uuid
+  product_id   String              @db.Uuid
+  user_id      String              @db.Uuid
+  type         stock_movement_type
+  quantity     Int
+  reference_id String?             @db.Uuid
+  note         String?
+  created_at   DateTime            @default(now()) @db.Timestamp(6)
+  branch       branches            @relation(fields: [branch_id], references: [id])
+  product      products            @relation(fields: [product_id], references: [id])
+  user         users               @relation(fields: [user_id], references: [id])
+}
+
+model suppliers {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String      @db.VarChar(255)
+  contact_person String?     @db.VarChar(255)
+  phone          String?     @db.VarChar(50)
+  address        String?
+  purchases      purchases[]
+}
+
+model purchases {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branch_id        String             @db.Uuid
+  supplier_id      String             @db.Uuid
+  invoice_number   String?            @db.VarChar(100)
+  total_amount     Decimal            @default(0.00) @db.Decimal(15, 2)
+  status           purchase_status
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  branch           branches           @relation(fields: [branch_id], references: [id])
+  supplier         suppliers          @relation(fields: [supplier_id], references: [id])
+  purchase_details purchase_details[]
+}
+
+model purchase_details {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchase_id String    @db.Uuid
+  product_id  String    @db.Uuid
+  buy_price   Decimal   @default(0.00) @db.Decimal(15, 2)
+  quantity    Int       @default(1)
+  subtotal    Decimal   @default(0.00) @db.Decimal(15, 2)
+  purchase    purchases @relation(fields: [purchase_id], references: [id])
+  product     products  @relation(fields: [product_id], references: [id])
+}
+
+model product_variants {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id       String   @db.Uuid
+  name             String   @db.VarChar(255)
+  additional_price Decimal  @default(0.00) @db.Decimal(15, 2)
+  sku              String   @unique @db.VarChar(100)
+  product          products @relation(fields: [product_id], references: [id])
+}
+
+model product_modifiers {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id String   @db.Uuid
+  name       String   @db.VarChar(255)
+  price      Decimal  @default(0.00) @db.Decimal(15, 2)
+  product    products @relation(fields: [product_id], references: [id])
+}
+
+model store_settings {
+  id    String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key   String  @unique @db.VarChar(255)
+  value String?
+}

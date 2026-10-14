@@ -1,0 +1,16 @@
+{
+  "name": "pos-system",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names admin,app --prefix-colors blue,green \"npm run dev:admin\" \"npm run dev:app\"",
+    "dev:app": "npm --prefix pos-app run dev -- --port 3002",
+    "dev:admin": "npm --prefix pos-admin run dev -- --port 3001",
+    "build:app": "npm --prefix pos-app run build",
+    "build:admin": "npm --prefix pos-admin run build",
+    "lint:app": "npm --prefix pos-app run lint",
+    "lint:admin": "npm --prefix pos-admin run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS — Kasir & Admin dalam Satu Sistem</title>
+<style>
+/* Palette sampled from pos-admin + pos-app dashboards:
+   bg gray-50/100, white cards, slate-900 sidebar/nav, primary blue-600/700,
+   success green-600, accents purple-600 + orange-500, text gray-900/500 */
+:root{
+  --bg:#f9fafb; --card:#ffffff; --ink:#111827; --muted:#6b7280;
+  --line:#e5e7eb; --nav:#0f172a;
+  --blue:#2563eb; --blue-dark:#1d4ed8; --blue-soft:#eff6ff;
+  --green:#16a34a; --green-soft:#f0fdf4;
+  --purple:#9333ea; --purple-soft:#faf5ff;
+  --orange:#ea580c; --orange-soft:#fff7ed;
+  --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.08),0 4px 16px rgba(16,24,40,.06);
+}
+[data-theme="dark"]{
+  --bg:#0f172a; --card:#1e293b; --ink:#f1f5f9; --muted:#94a3b8;
+  --line:#334155; --blue-soft:#1e3a8a33; --green-soft:#14532d55;
+  --purple-soft:#581c8722; --orange-soft:#7c2d1233;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;transition:background .3s,color .3s}
+.wrap{max-width:1080px;margin:0 auto;padding:0 1.25rem}
+nav.top{position:sticky;top:0;z-index:50;background:var(--nav);color:#fff}
+nav.top .wrap{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.25rem}
+.brand{display:flex;align-items:center;gap:.6rem;font-weight:800;font-size:1.15rem}
+.brand .mark{width:32px;height:32px;background:var(--blue);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.nav-links{display:flex;align-items:center;gap:1.25rem}
+.nav-links a{color:#cbd5e1;text-decoration:none;font-size:.92rem}
+.nav-links a:hover{color:#fff}
+.btn{display:inline-block;padding:.6rem 1.3rem;border-radius:10px;font-weight:700;text-decoration:none;font-size:.92rem;border:none;cursor:pointer;transition:transform .12s}
+.btn:active{transform:scale(.96)}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue-dark)}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.icon-btn{background:transparent;border:1px solid #334155;color:#e2e8f0;border-radius:9px;padding:.4rem .6rem;cursor:pointer;font-size:1rem}
+#menuBtn{display:none}
+@media(max-width:640px){.nav-links{display:none}.nav-links.open{display:flex;flex-direction:column;position:absolute;top:100%;right:0;left:0;background:var(--nav);padding:1rem 1.25rem;align-items:flex-start}#menuBtn{display:block}}
+.hero{text-align:center;padding:4.5rem 0 2.5rem}
+.badge{display:inline-flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;background:var(--green-soft);color:var(--green);border:1px solid var(--line);padding:.3rem .9rem;border-radius:999px;margin-bottom:1.2rem}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.hero h1{font-size:clamp(2rem,5vw,3rem);line-height:1.15;letter-spacing:-.02em}
+.hero h1 .hl{color:var(--blue)}
+.hero p.sub{color:var(--muted);font-size:1.08rem;max-width:640px;margin:1rem auto 1.8rem}
+.cta-row{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap}
+.status-row{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.4rem}
+.pill{font-size:.78rem;font-weight:600;padding:.3rem .8rem;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--muted);box-shadow:var(--shadow)}
+.pill .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d1d5db;margin-right:.4rem}
+.pill.on{color:var(--green)}.pill.on .dot{background:var(--green)}
+.pill.off{color:#dc2626}.pill.off .dot{background:#dc2626}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.9rem;margin:2.5rem 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.2rem;text-align:center}
+.stat b{font-size:1.6rem;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:.82rem;color:var(--muted)}
+section.block{padding:2rem 0}
+h2.sec{font-size:1.45rem;margin-bottom:.3rem;letter-spacing:-.01em}
+p.sec-sub{color:var(--muted);margin-bottom:1.4rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.4rem;opacity:0;transform:translateY(14px);transition:opacity .5s,transform .5s}
+.card.show{opacity:1;transform:none}
+.card .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:.8rem}
+.ic.blue{background:var(--blue-soft)}.ic.green{background:var(--green-soft)}.ic.purple{background:var(--purple-soft)}.ic.orange{background:var(--orange-soft)}
+.card h3{font-size:1rem;margin-bottom:.3rem}.card p{font-size:.88rem;color:var(--muted)}
+.access{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.app{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.8rem;opacity:0;transform:translateY(14px);transition:opacity .5s,transform .5s}
+.app.show{opacity:1;transform:none}
+.app .live{font-size:.75rem;font-weight:700;margin-left:.5rem}
+.lucide{width:1em;height:1em;stroke-width:2;vertical-align:-.15em}
+.icon-btn .lucide{width:1.1rem;height:1.1rem;vertical-align:middle}
+.btn .lucide{width:1rem;height:1rem;margin-right:.35rem}
+.card .ic .lucide{width:1.35rem;height:1.35rem}
+.live .lucide{width:.85rem;height:.85rem}
+.app p{color:var(--muted);font-size:.9rem;margin:.5rem 0 1.2rem}
+.app .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+ol.steps{list-style:none;counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+ol.steps li{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.2rem 1.2rem 1.2rem 3.4rem;position:relative;font-size:.9rem;color:var(--muted)}
+ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:1rem;top:1.1rem;width:28px;height:28px;border-radius:50%;background:var(--nav);color:#fff;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+ol.steps li b{color:var(--ink);display:block;margin-bottom:.15rem}
+code{background:var(--blue-soft);padding:.1rem .45rem;border-radius:6px;font-size:.82rem}
+footer{border-top:1px solid var(--line);margin-top:3rem;padding:1.6rem 0;color:var(--muted);font-size:.83rem;text-align:center}
+</style>
+</head>
+<body data-theme="light">
+<nav class="top">
+  <div class="wrap">
+    <div class="brand"><span class="mark"><i data-lucide="receipt-text" aria-hidden="true"></i></span>POS</div>
+    <div class="nav-links" id="navLinks">
+      <a href="#fitur">Fitur</a>
+      <a href="#akses">Akses</a>
+      <button class="icon-btn" id="themeBtn" title="Mode gelap/terang" aria-label="Mode gelap/terang"><i data-lucide="moon" aria-hidden="true"></i></button>
+      <a class="btn btn-blue" href="http://localhost:3002" style="padding:.5rem 1.1rem"><i data-lucide="shopping-cart" aria-hidden="true"></i>Buka Kasir</a>
+    </div>
+    <button class="icon-btn" id="menuBtn" title="Buka menu" aria-label="Buka menu"><i data-lucide="menu" aria-hidden="true"></i></button>
+  </div>
+</nav>
+<div class="wrap">
+  <header class="hero">
+    <div class="badge"><span class="dot"></span><span>Satu database PostgreSQL · dua aplikasi</span></div>
+    <h1>Kasir cepat, <span class="hl">admin terkendali.</span></h1>
+    <p class="sub">POS Kasir untuk transaksi harian, POS Admin untuk produk, stok & laporan — berbagi database yang sama, berjalan berdampingan via Docker.</p>
+    <div class="cta-row">
+      <a class="btn btn-blue" href="http://localhost:3002"><i data-lucide="shopping-cart" aria-hidden="true"></i>Buka POS Kasir</a>
+      <a class="btn btn-ghost" href="http://localhost:3001"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i>Buka POS Admin</a>
+    </div>
+    <div class="status-row">
+      <span class="pill" id="stKasir"><span class="dot"></span>Kasir :3002 — memeriksa…</span>
+      <span class="pill" id="stAdmin"><span class="dot"></span>Admin :3001 — memeriksa…</span>
+    </div>
+  </header>
+  <section class="stats" id="stats">
+    <div class="stat"><b data-count="4">0</b><span>Metode bayar</span></div>
+    <div class="stat"><b data-count="3">0</b><span>Role pengguna</span></div>
+    <div class="stat"><b data-count="15">0</b><span>Tabel database</span></div>
+    <div class="stat"><b data-count="2">0</b><span>Aplikasi + 1 landing</span></div>
+  </section>
+  <section class="block" id="fitur">
+    <h2 class="sec">Fitur utama</h2>
+    <p class="sec-sub">Warna & gaya kartu ini mengikuti kedua dashboard.</p>
+    <div class="grid">
+      <div class="card"><div class="ic blue"><i data-lucide="zap" aria-hidden="true"></i></div><h3>Transaksi kilat</h3><p>Keranjang, pencarian produk, varian & add-on, bayar cash · QRIS · debit · kredit.</p></div>
+      <div class="card"><div class="ic green"><i data-lucide="package" aria-hidden="true"></i></div><h3>Stok & produk</h3><p>SKU, kategori, harga beli/jual, mutasi masuk–keluar–adjustment per cabang.</p></div>
+      <div class="card"><div class="ic purple"><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i></div><h3>Laporan real-time</h3><p>Panel admin refresh otomatis tiap 5 detik: omzet, transaksi, riwayat.</p></div>
+      <div class="card"><div class="ic orange"><i data-lucide="store" aria-hidden="true"></i></div><h3>Multi-cabang & shift</h3><p>Branch, role admin/manager/cashier, shift kas dengan rekonsiliasi.</p></div>
+    </div>
+  </section>
+  <section class="block" id="akses">
+    <h2 class="sec">Pilih aplikasi</h2>
+    <p class="sec-sub">Status di bawah dicek langsung dari browser ke tiap aplikasi.</p>
+    <div class="access">
+      <div class="app">
+        <h3><i data-lucide="shopping-cart" aria-hidden="true"></i> POS Kasir <span class="live" id="liveKasir"></span></h3>
+        <p>Untuk kasir & pelayan — buat pesanan, kelola keranjang, selesaikan pembayaran.</p>
+        <div class="row"><a class="btn btn-blue" href="http://localhost:3002">Buka :3002 <i data-lucide="arrow-right" aria-hidden="true"></i></a></div>
+      </div>
+      <div class="app">
+        <h3><i data-lucide="chart-no-axes-combined" aria-hidden="true"></i> POS Admin <span class="live" id="liveAdmin"></span></h3>
+        <p>Untuk owner & manager — produk, add-on, transaksi, dan statistik toko.</p>
+        <div class="row"><a class="btn btn-blue" href="http://localhost:3001">Buka :3001 <i data-lucide="arrow-right" aria-hidden="true"></i></a></div>
+      </div>
+    </div>
+  </section>
+</div>
+<footer>POS-System <span id="year"></span> · <span id="clock"></span></footer>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+lucide.createIcons();
+document.getElementById('year').textContent = new Date().getFullYear();
+setInterval(() => {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+}, 1000);
+const root = document.body, themeBtn = document.getElementById('themeBtn');
+const setThemeIcon = name => {
+  themeBtn.innerHTML = '<i data-lucide="' + name + '" aria-hidden="true"></i>';
+  lucide.createIcons();
+};
+const saved = localStorage.getItem('posLandingTheme');
+if (saved) { root.dataset.theme = saved; setThemeIcon(saved === 'dark' ? 'sun' : 'moon'); }
+themeBtn.onclick = () => {
+  const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = next;
+  localStorage.setItem('posLandingTheme', next);
+  setThemeIcon(next === 'dark' ? 'sun' : 'moon');
+};
+document.getElementById('menuBtn').onclick = () =>
+  document.getElementById('navLinks').classList.toggle('open');
+const counters = document.querySelectorAll('[data-count]');
+const cObs = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const el = e.target, target = +el.dataset.count, t0 = performance.now();
+  const tick = t => {
+    const p = Math.min((t - t0) / 900, 1);
+    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  cObs.unobserve(el);
+}), { threshold: .5 });
+counters.forEach(el => cObs.observe(el));
+const revObs = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('show'); revObs.unobserve(e.target); }
+}), { threshold: .15 });
+document.querySelectorAll('.card,.app').forEach(el => revObs.observe(el));
+async function check(url, pillId, liveId, label) {
+  const pill = document.getElementById(pillId), live = document.getElementById(liveId);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    await fetch(url, { mode: 'no-cors', signal: ctrl.signal });
+    pill.className = 'pill on'; pill.innerHTML = '<span class="dot"></span>' + label + ' — online';
+    if (live) { live.innerHTML = '<i data-lucide="circle-check" aria-hidden="true"></i> online'; live.style.color = '#16a34a'; lucide.createIcons(); }
+  } catch {
+    pill.className = 'pill off'; pill.innerHTML = '<span class="dot"></span>' + label + ' — offline / belum jalan';
+    if (live) { live.innerHTML = '<i data-lucide="circle-x" aria-hidden="true"></i> offline'; live.style.color = '#dc2626'; lucide.createIcons(); }
+  } finally { clearTimeout(timer); }
+}
+check('http://localhost:3002', 'stKasir', 'liveKasir', 'Kasir :3002');
+check('http://localhost:3001', 'stAdmin', 'liveAdmin', 'Admin :3001');
+</script>
+</body>
+</html>

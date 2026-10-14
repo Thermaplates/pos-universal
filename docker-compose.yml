@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pos-admin:
+    build: ./pos-admin
+    container_name: pos-admin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pos?schema=public
+      PORT: 3000
+    ports:
+      - "3001:3000"
+
+  pos-app:
+    build: ./pos-app
+    container_name: pos-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pos?schema=public
+      PORT: 3000
+    ports:
+      - "3002:3000"
+
+  landing:
+    build: ./landing
+    container_name: pos-landing
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+
+volumes:
+  pos-pgdata:
